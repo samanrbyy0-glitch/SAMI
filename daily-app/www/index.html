@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>لیست روزانه</title>
+<style>
+:root{--bg:#eef1f6;--card:#fff;--ink:#17202e;--mute:#6b7688;--line:#dde3ec;--yes:#16a36a;--no:#d9423e;--acc:#2f4bd8}
+@media(prefers-color-scheme:dark){:root{--bg:#0f141c;--card:#18202c;--ink:#e8edf5;--mute:#8d98aa;--line:#273245;--yes:#3ecf8e;--no:#ff6b66;--acc:#7b93ff}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Tahoma,sans-serif;line-height:1.7;padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0)}
+main{max-width:640px;margin:0 auto;padding:14px 12px 50px}
+h1{font-size:1.2rem;margin:4px 0}.sub{color:var(--mute);font-size:.9rem;margin-bottom:12px}
+.item{background:var(--card);border:1px solid var(--line);border-right:5px solid var(--line);border-radius:14px;padding:10px 12px;margin-bottom:10px}
+.item.y{border-right-color:var(--yes)}.item.x{border-right-color:var(--no)}
+.top{display:flex;gap:8px;align-items:center;justify-content:space-between}
+.t{flex:1;font-weight:bold}
+.ch{display:flex;gap:6px}
+button{font:inherit;cursor:pointer}
+.ch button{border:1px solid var(--line);background:transparent;color:var(--mute);border-radius:9px;padding:3px 12px}
+.ch .on.y{color:var(--yes);border-color:var(--yes)}.ch .on.x{color:var(--no);border-color:var(--no)}
+.times{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;align-items:center}
+.tm{display:flex;align-items:center;border:1px solid var(--line);border-radius:9px;padding:0 4px}
+.tm input{font:inherit;border:0;background:transparent;color:var(--ink);width:6.2em}
+.tm b{color:var(--no);cursor:pointer;padding:0 6px}
+.add{border:1px dashed var(--acc);color:var(--acc);background:transparent;border-radius:9px;padding:2px 10px}
+.reason{width:100%;margin-top:8px;font:inherit;font-size:.85rem;border:1px solid var(--line);background:transparent;color:var(--ink);border-radius:9px;padding:5px 9px}
+#msg{color:var(--mute);font-size:.8rem;margin-top:10px}
+</style></head><body><main>
+<h1>لیست انجام وظایف</h1><div class="sub" id="day"></div><div id="list"></div><div id="msg"></div>
+</main><script>
+const DEF=[["ساعت ۶ بیدار شدن",["06:00"]],["شنا ۱۵ + شکم ۲۰ تا + پلانک ۱.۵ دقیقه",["06:25"]],["پیاده‌روی صبح",["07:00"]],["خوردن دانه چیا + ویتامین C + قهوه",["08:00"]],["تخم‌مرغ + سیب‌زمینی",["09:00"]],["چک کردن چارت",["10:00"]],["دوش آب سرد",["10:15"]],["آموزش کار",["10:30"]],["کتاب اول",["11:40"]],["ترید",["09:50","15:20","16:20"]],["کتاب دوم",["18:30"]],["تمرین زبان",["17:00"]],["باشگاه و تفریح برای آرامش ذهن",["20:00"]],["خواب ساعت 00:00",["11:45","11:59"]]];
+const $=id=>document.getElementById(id),LN=window.Capacitor&&Capacitor.Plugins&&Capacitor.Plugins.LocalNotifications;
+const ld=(k,d)=>{try{return JSON.parse(localStorage.getItem(k))||d}catch(e){return d}};
+const sv=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
+const now=new Date(),dk="day:"+now.getFullYear()+"-"+(now.getMonth()+1)+"-"+now.getDate();
+let tasks=ld("tasks",DEF),day=ld(dk,{s:{},r:{}}),tmr;
+$("day").textContent=new Intl.DateTimeFormat("fa-IR-u-ca-persian",{weekday:"long",year:"numeric",month:"long",day:"numeric"}).format(now);
+function saveTasks(){sv("tasks",tasks);clearTimeout(tmr);tmr=setTimeout(sched,600)}
+function render(){
+ const L=$("list");L.innerHTML="";
+ tasks.forEach((t,i)=>{
+  const s=day.s[i],el=document.createElement("div");el.className="item "+(s||"");
+  el.innerHTML='<div class="top"><div class="t">'+(i+1).toLocaleString("fa-IR")+". "+t[0]+'</div><div class="ch"><button class="y'+(s==="y"?" on":"")+'">آره</button><button class="x'+(s==="x"?" on":"")+'">نه</button></div></div><div class="times"></div><input class="reason" placeholder="دلیل...">';
+  const [by,bx]=el.querySelectorAll(".ch button");
+  by.onclick=()=>pick(i,"y");bx.onclick=()=>pick(i,"x");
+  const r=el.querySelector(".reason");r.value=day.r[i]||"";r.oninput=()=>{day.r[i]=r.value;sv(dk,day)};
+  const T=el.querySelector(".times");
+  t[1].forEach((tm,j)=>{
+   const w=document.createElement("span");w.className="tm";
+   w.innerHTML='<input type="time" value="'+tm+'"><b title="حذف">×</b>';
+   w.querySelector("input").onchange=e=>{if(e.target.value){t[1][j]=e.target.value;saveTasks()}};
+   w.querySelector("b").onclick=()=>{t[1].splice(j,1);saveTasks();render()};
+   T.appendChild(w)});
+  if(t[1].length<9){const a=document.createElement("button");a.className="add";a.textContent="+ ساعت الارم";a.onclick=()=>{t[1].push("08:00");saveTasks();render()};T.appendChild(a)}
+  L.appendChild(el)});
+}
+function pick(i,v){if(day.s[i]===v)delete day.s[i];else day.s[i]=v;sv(dk,day);render()}
+async function sched(){
+ if(!LN){$("msg").textContent="الارم فقط داخل اپ اندروید کار می‌کند.";return}
+ try{
+  const p=await LN.requestPermissions();
+  if(p.display!=="granted"){$("msg").textContent="اجازه‌ی نوتیفیکیشن داده نشده؛ در تنظیمات گوشی فعالش کن.";return}
+  try{const e=await LN.checkExactNotificationSetting();if(e.exact_alarm==="denied")await LN.changeExactNotificationSetting()}catch(_){}
+  await LN.createChannel({id:"alarms",name:"الارم کارها",importance:5,visibility:1,vibration:true});
+  const q=await LN.getPending();if(q.notifications.length)await LN.cancel({notifications:q.notifications});
+  const list=[];
+  tasks.forEach((t,i)=>t[1].forEach((tm,j)=>{const [h,m]=tm.split(":").map(Number);
+   list.push({id:i*10+j+1,title:t[0],body:"وقت این کار رسیده",channelId:"alarms",schedule:{on:{hour:h,minute:m},allowWhileIdle:true}})}));
+  if(list.length)await LN.schedule({notifications:list});
+  $("msg").textContent=list.length.toLocaleString("fa-IR")+" الارم روزانه تنظیم شد.";
+ }catch(e){$("msg").textContent="خطا در تنظیم الارم: "+e}
+}
+render();sched();
+</script></body></html>
